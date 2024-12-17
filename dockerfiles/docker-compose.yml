@@ -1,0 +1,71 @@
+version : '3.8'
+services:
+  service_1:
+    container_name: nginx_container
+    image: local_image:nginx
+    build:
+      context: /root/workdir/project/docker-web/dockerfiles
+      dockerfile: Dockerfile
+      args:
+        - tag_name=nginx_1.21.5
+      labels:
+        - "com.image_label=label_value"
+    volumes:
+      - /root/workdir/project/docker-web/dist:/usr/src/dist
+      - type: bind
+        source: ./volumes/bind-data
+        target: /usr/src/volumes/bind
+      - type: volume
+        source: nginx_container_volume_data
+        target: /usr/src/volumes/volume
+        volume:
+          nocopy: true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.50'
+          memory: 300M
+        reservations:
+          cpus: '0.25'
+          memory: 200M
+    ports:
+      - "8001:80"
+    networks:
+      - whole_network
+    extra_hosts:
+      - "somehost:162.242.195.82"
+  service_2:
+    container_name: nginx_container2
+    image: local_image:nginx2
+    build:
+      context: /root/workdir/project/docker-web/dockerfiles
+      dockerfile: Dockerfile
+      args:
+        - tag_name=nginx_1.21.5
+      labels:
+        - "com.image_label=label_value"
+    volumes_from:
+      - service_1
+    deploy:
+      resources:
+        limits:
+          cpus: '1.50'
+          memory: 300M
+        reservations:
+          cpus: '0.25'
+          memory: 200M
+    ports:
+      - "8002:80"
+    networks:
+      - whole_network
+    depends_on:
+      - service_1
+    links:
+      - service_1
+    external_links:
+      - service_1
+networks:
+  whole_network:
+    driver: bridge
+volumes:
+  nginx_container_volume_data:

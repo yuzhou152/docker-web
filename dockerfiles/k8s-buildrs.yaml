@@ -1,0 +1,68 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: myspace
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dep1
+  namespace: myspace
+  labels:
+    app: dep1-label
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dep1-label
+  template:
+    metadata:
+      labels:
+        app: dep1-label
+    spec:
+      volumes:
+      - name: test-volume
+        hostPath:
+          path: /root/workdir/project/docker-web/dist
+          type: DirectoryOrCreate
+      containers:
+      - name: nginx-container
+        image: local_image:nginx
+        workingDir: /usr/src/dist
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            cpu: '1.50'
+            memory: "300Mi"
+          requests:
+            cpu: '0.50'
+            memory: "200Mi"
+        env:
+        - name: TEST_ENV
+          value: ENV_VALUE
+        volumeMounts:
+        - mountPath: /usr/src/dist
+          name: test-volume
+#        command: ["stress"]
+#        args: ["--vm-bytes", "150M"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc1
+  namespace: myspace
+  labels:
+    app: dep1-label
+spec:
+#  clusterIP: 10.96.0.12
+  type: NodePort
+  selector:
+    app: dep1-label
+  ports:
+    - name: p1
+      protocol: TCP
+      port: 8001
+      targetPort: 80
+      nodePort: 30007

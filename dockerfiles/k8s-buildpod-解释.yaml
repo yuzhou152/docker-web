@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: myspace                                  # 生成namespace
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: pod1
+  namespace: myspace
+  labels:                                        # 跟RC，Service关联对应
+    name: pod1-label
+spec:
+  nodeName: k8s-master                           # 设置NodeName表示将该Pod调度到指定到名称的node节点上  除此外还有 权重 | 标签 | 拓扑机制去选择节点
+  hostNetwork: false                             # 是否使用主机网络模式，默认为false，如果设置为true，表示使用宿主机网络
+  containers:
+  - name: nginx-container
+    image: local_image:nginx
+    workingDir: /usr/src/dist                    # 容器的工作目录
+    ports:                                       # 需要暴露的端口库号列表
+    - name: p1                                   # 端口的名称
+      containerPort: 80                          # 容器需要监听的端口号
+      hostPort: 8001                             # 容器所在主机需要监听的端口号，默认与Container相同
+      protocol: TCP                              # 端口协议，支持TCP和UDP，默认TCP
+    resources:
+      limits:                                    # cpu和内存的最大占用
+        cpu: '1.50'                              # 1核cpu的处理时间 + 1和cpu处理时间的50%
+        memory: "300Mi"                          # 内存限制 300Mi 2Gi
+      requests:                                  # cpu和内存的初始化时占用（最小占用）
+        cpu: '0.50'                              # 1核cpu处理时间的50%
+        memory: "200Mi"
+    env:                                         # 容器运行前需设置的环境变量列表
+    - name: TEST_ENV                             # 环境变量名称
+      value: ENV_VALUE                           # 环境变量的值
+    volumeMounts:
+    - mountPath: /usr/src/dist                   # 容器目录
+      name: test-volume
+#    command: ["stress"]                         # 容器的启动命令列表，如不指定，使用打包时使用的启动命令
+#    args: ["--vm-bytes", "150M"]                # 容器的启动命令参数列表
+
+  volumes:
+  - name: test-volume
+    hostPath:
+      path: /root/workdir/project/docker-web/dist       # 主机目录
+      type: DirectoryOrCreate                           # 如果在给定路径上什么都不存在，那么将根据需要创建空目录
+

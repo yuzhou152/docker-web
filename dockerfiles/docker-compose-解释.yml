@@ -1,0 +1,115 @@
+version : '3.8'                                    # yml解析版本定义，在官网中我找到对应的文档 https://docs.docker.com/compose/compose-file/compose-versioning/
+services:
+  service_1:                                       # 服务名称
+    container_name: node_container                 # 容器名称
+    image: local_image:nginx                        # 生成的镜像名称
+    build:
+      context: /root/workdir/project/docker-web/dockerfiles        # 构建时的上下文环境 .宿主机的workDir
+      dockerfile: Dockerfile                       # 指定Dockerfile
+      args:                                        # 指定Dockerfile中的args
+        - tag_name=nginx_1.21.5
+      labels:                                      # 镜像的标签
+        - "com.image_label=label_value"
+    volumes:                                       # 容器和宿主机的挂载方式 主机:容器 
+      - /root/workdir/project/docker-web/dist:/usr/src/dist        # 以宿主机为准 bind 模式
+      - type: bind                                                 # 以宿主机为准 bind 模式
+        source: ./volumes/bind-data
+        target: /usr/src/volumes/bind
+      - type: volume                                               # volume模式 宿主有数据时，以宿主机为准，宿主无数据，从容器复制过来，再以宿主机为准，nocopy:true时只以宿主机为准
+        source: nginx_container_volume_data
+        target: /usr/src/volumes/volume
+        volume:
+          nocopy: true
+    deploy:
+      resources:
+        limits:                                    # cpu和内存的最大占用
+          cpus: "1.50"                             # 1核cpu的处理时间 + 1和cpu处理时间的50%
+          memory: 300M                             # 内存限制 300M 2G
+        reservations:                              # cpu和内存的初始化时占用（最小占用）
+          cpus: '0.50'                             # 1核cpu处理时间的50%
+          memory: 200M
+    ports:                                         # 宿主端口:容器端口
+      - "8841:8841"
+    networks:                                      # 选择网关组，可在连接前手动创建 docker network create
+      - whole_network
+    extra_hosts:                                   # 启动前放在/etc/hosts 中的映射
+      - "somehost:162.242.195.82"
+    entrypoint:                                    # 覆盖Dockerfile中的entrypoint
+      - echo
+    command: ["I have started"]                               # 覆盖Dockerfile中的CMD
+  service_2:
+    container_name: node_container2
+    image: local_image:nginx2
+    build:
+      context: /root/workdir/project/docker-web/dockerfiles
+      dockerfile: Dockerfile
+      args:
+        - tag_name=nginx_1.21.5
+      labels:
+        - "com.image_label=label_value"
+    volumes_from:
+      - service_1
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 300M
+        reservations:
+          cpus: '0.25'
+          memory: 200M
+    ports:
+      - "8842:8841"
+    networks:
+      - whole_network
+    depends_on:                                    # 容器依赖，启动service_2前会先启动service_1
+      - service_1
+    links:                                         # 可通过service_name 直接访问指定服务 同一个网络总
+      - service_1
+    external_links:                                # 可通过service_name 直接访问指定服务 外部网络中
+      - service_1
+    entrypoint:
+      - echo
+    command: ["I have started"]
+networks:
+  whole_network:
+    driver: bridge
+volumes:
+  nginx_container_volume_data:                     # 对应宿主机的 /var/lib/docker/volumes/nginx_container_volume_data/_data
+
+
+
+
+
+
+# docker compose pull service_name                            拉取镜像
+# docker compose build --build-arg tag_name=node --force-rm   构建镜像 --build-arg:指定args --no-cache:不使用缓存镜像
+
+# docker compose up -d service_name service_name2             构建并启动 -d:后台
+# docker compose up --build -d service_name service_name2     如果有已存在的镜像则重新构建
+
+# docker compose stop service_name service_name2              停止对应容器，不加service_name 则全部停止
+# docker compose start service_name service_name2             开启对应容器，不加service_name 则全部开启
+# docker compose restart service_name service_name2           开启对应容器，不加service_name 则全部开启
+
+# docker compose down --rmi all -v                            停止并删除所有容器 --rmi all:删除所有相关images及networks -v 删除已声明在最下方的volume
+
+# docker compose logs 
+# docker compose ps -a                                        展示所有容器
+# docker compose exec service_name bash                       进入某个容器
+
+
+# nerdctl -n myrep compose pull service_name                            拉取镜像
+# nerdctl -n myrep compose build --build-arg tag_name=node --force-rm   构建镜像 --build-arg:指定args --no-cache:不使用缓存镜像
+
+# nerdctl -n myrep compose up -d service_name service_name2             构建并启动 -d:后台
+# nerdctl -n myrep compose up --build -d service_name service_name2     如果有已存在的镜像则重新构建
+
+# nerdctl -n myrep compose stop service_name service_name2              停止对应容器，不加service_name 则全部停止
+# nerdctl -n myrep compose start service_name service_name2             开启对应容器，不加service_name 则全部开启
+# nerdctl -n myrep compose restart service_name service_name2           开启对应容器，不加service_name 则全部开启
+
+# nerdctl -n myrep compose down --rmi all                               停止并删除所有容器 --rmi all:删除所有相关images及networks
+
+# nerdctl -n myrep compose logs 
+# nerdctl -n myrep compose ps -a                                        展示所有容器
+# nerdctl -n myrep compose exec service_name bash                       进入某个容器
